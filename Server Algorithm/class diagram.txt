@@ -1,0 +1,84 @@
+# 콘텐츠 정보를 저장하기 위한 객체
+@ Class: Content(Data)
+	* string id
+	* string name
+	* boolean is_selected
+	* List<string> tags
+	* Image image
+	* String text
+
+# DB에 접근하여 Content객체를 다루기 위한 객체
+@ Class: ContentDao(Actuator)
+	- Content getContentById( string id )	 	# id값으로 원하는 객체를 얻는다.
+	- void accStayTime( string id, float time ) # id값으로 원하는 객체에 time을 누적시킨다. (5~30초 이내 유지)
+	- void press( string id ) 			# id값으로 원하는 객체를 “좋아요”가 눌린 상태로 변경
+	- void unpress( string id ) 			# id값으로 원하는 객체를 “좋아요”가 안 눌린 상태로 변경
+	# 아래 3개는 실제 서비스에서 원하는 조건에 대해서 가져올 수 있도록 수정되어야 한다.
+	- List<Content> getAllStates( void )		# 모든 content의 id와 tag값만 넘겨준다.
+	- List<Content> getAllInformations( void )	# 모든 content의 image를 제외한 모든 값을 넘겨준다.
+	- List<Content> getAllContents( void )		# DB에 존재하는 모든 콘텐츠를 가져온다.
+
+# 콘텐츠의 우선순위를 고려한 전송 순서 관리
+@ Class: ContentSendingOrderManager(Actuator)		
+	* Dict<string, int> contentTable 	# 각 콘텐츠의 상태 관리 [“sent” | “waiting” | “not_sent”]
+	* List<string> sentContentIdList		# 이미 전송된 contents의 id list
+	* List<string> nextContentIdList 	# 전송 대기중인 contents의 id list
+	* List<string> notSentContentIdList 	# 아직 전송되지 않은 contents의 id list
+
+	- void init( List<Content> states )
+	- void moveAllNextContentIdsIntoSentIdList( void )  
+	- void renewNextContentIdList( TagPriorityTable ptt, int n ) 
+		-> notSentList에서 상위 n개의 content를 뽑아 nextList에 추가
+	- List<string> getNextContentId_List( void )
+
+#########################################################################
+# 태그의 정보를 저장하기 위한 객체
+@ Class: Tag:	# 태그 정보 관리
+	* string tagId
+	* int selectedCount		# 해당 태그에 해당하는 “좋아요“를 받은 content의 개수
+	* float totalStayTime		# 해당 태그를 부여받은 이미지들의 stay_time 총합
+
+	- addCount( int count )	
+	- subCount( int count )
+	- accStayTime( float time )
+
+# 여러 태그 정보를 한 번에 관리해주는 객체
+@ Class: TagManager(Actuator)
+	* Dict<string, Tag> tags  # first is tag_id
+
+	- init( List<Content> contents ) # content list에서 모든 태그 정보를 뽑아 tag객체로 만들고 리스트로 초기화
+	- doseExistById( string tagId )
+	- addCountById( string tagId, int count )
+	- subCountById( string tagId, int count )
+	- accStayTime( string tagId, float stay_time )
+
+@ Class: TagPriorityTable(Data)
+	- List<string> orderedTagIds
+	- void init(TagManager tm) # 선호도 테이블을 참조하여 태그의 우선순위 결정
+
+####################################################################
+# 사용자가 어떤 content를 얼마나 오래 보았는지 or “좋아요“를 눌렀는지 등 
+@ Class: UserAction(Data)
+	* string type
+	* int contentId
+	* float stayTime
+	* boolean selected
+
+# 클라이언트에서 오는 json형식의 userAction 정보를 객체화
+@ Class: UserActionManager(Actuator)
+	List<UserAction> convert_to_object( Json json_user_action)
+	
+# 전체 서비스 관리자
+@ Class: MainDirector(Actuator)
+	* ContentDao cd
+	* ContentManager cm
+	* TagManager tm
+	* UsageRecord ur
+	* UserActionManager uam
+
+	- List<Content> getAndRenewNextImageList( void )	# 전송 대기중인 contents를 얻는다.
+	- void renewNextImageList( void ) 			# 전송 대기중인 contents를 갱신한다.
+	- void treatUserActions( Json jsonUserAction ) # 전달받은 json에서 userAction을 모두 추출하고 처리한다.
+	- void initReferenceInfor( void )			# 모든 선호도 정보를 초기화한다.
+	- void treatUserAction( UserAction us )			# userAction을 처리해준다.
+	- void treatUserActions( List<UserAction> usList)	# userAction을 처리해준다.
