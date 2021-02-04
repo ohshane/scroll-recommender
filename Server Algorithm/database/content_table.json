@@ -1,7 +1,9 @@
 {
-    "animal_0.jpg":{
-        "stay_time": 12.7,
-        "like_flag": 0,
-        "tags": [ "animal" ]
-    }
+	"animal_0.jpg": {
+		"stay_time": 12.7,
+		"like_flag": 0,
+		"tags": [
+			"animal"
+		]
+	}
 }
